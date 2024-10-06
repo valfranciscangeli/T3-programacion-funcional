@@ -13,7 +13,7 @@ common warnings
 executable T3
     import:           warnings
     main-is:          Main.hs
-    other-modules: T3
+    other-modules: T3.hs
     build-depends:  base ^>=4.17.2.1,
                     hspec >= 2.11.9,
                     QuickCheck >=2.15.0.1,
