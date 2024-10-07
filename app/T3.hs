@@ -1,10 +1,8 @@
 {-# LANGUAGE InstanceSigs #-}
-
 module T3 where
 
 import Control.Monad.State
 import Data.List (nub) -- para eliminar duplicados de listas
-import Numeric.Probability.Distribution ( uniform, T )
 import Prelude hiding (cycle)
 
 {-------------------------------------------}
@@ -143,23 +141,74 @@ playGame (Store : cmds) = do
 
 type Probability = Rational
 
-type Dist a = T Probability a
+--type Dist a = T Probability a  -- se comenta para poder crear una monada, no pude usar la libreria
+-- fuente: https://dennybritz.com/posts/probability-monads-from-scratch/
+
+newtype Dist a = Dist [(a, Probability)]
+
+unpackDist :: Dist a -> [(a, Probability)]
+unpackDist (Dist xs) = xs
+
+squishD :: (Ord a) => Dist a -> Dist a
+squishD (Dist xs) = Dist $ M.toList $ M.fromListWith (+) xs
+
+-- | Sum all probilities in the given list
+sumP :: [(a, Probability)] -> Probability
+sumP = sum . Prelude.map snd
+
+-- | Normalize the probabilities to 1.0
+normP :: [(a, Probability)] -> [(a, Probability)]
+normP xs = [(x, p / q) | let q = sumP xs, (x, p) <- xs]
+
+instance Functor Dist where
+  fmap f (Dist xs) = Dist $ [(f x, p) | (x, p) <- xs]
+
+instance Applicative Dist where
+  -- pure :: a -> Dist a
+  pure x = Dist [(x, 1.0)]
+  -- (<*>) :: Dist (a -> b) -> Dist a -> Dist b
+  (Dist fs) <*> (Dist xs) = Dist $ do
+    (x, px) <- xs
+    (f, pf) <- fs
+    return (f x, px * pf)
+
+instance Monad Dist where
+  -- (>>=) :: Dist a -> (a -> Dist b) -> Dist b
+  (Dist xs) >>= f = Dist $ do
+    (x, p) <- xs
+    (y, p') <- unpackDist (f x)
+    return (y, p * p')
+
+
+
+-- Genera una distribución uniforme de los valores en el rango dado
+uniform :: [a] -> Dist a
+uniform xs = Dist [(x, 1 / fromIntegral (length xs)) | x <- xs]
 
 -- Parte (a.I)
 pointDist :: Int -> Dist (Int, Int)
 -----------
 pointDist r = do
-  x <- uniform [-r .. r]
-  y <- uniform [-r .. r]
+  x <- uniform [-r .. r] -- x toma un valor del rango del cuadrado
+  y <- uniform [-r .. r] -- y toma un valor del rango del cuadrado
   return (x, y)
 
 -- Parte (a.II)
--- resultE3a :: Int -> Probability
------
--- resultE3a r = 4 * (fromIntegral insideCircle / fromIntegral totalPoints)
---   where
---     totalPoints = (2 * r + 1) ^ 2
---     insideCircle = length [() | (x, y) <- support (pointDist r), x^2 + y^2 <= r^2]
+-- ejercicio tipo Monte Carlo
+resultE3a :: Int -> Probability
+resultE3a r =
+    let cantidadPuntos = 10000
+    in runDist $ do
+        puntos <- replicateM cantidadPuntos (pointDist r) -- Genera los puntos
+        dentroCirculo <- cantidadDentroCirculo r (return puntos) -- Cuenta los puntos dentro del círculo
+        return (4 * (fromIntegral dentroCirculo / fromIntegral cantidadPuntos)) -- Realiza el cálculo
+
+-- Asegúrate de que `cantidadDentroCirculo` tenga este tipo
+cantidadDentroCirculo :: Int -> Dist [(Int, Int)] -> Dist Int
+cantidadDentroCirculo r pointsDist = do
+    points <- pointsDist
+    let dentroCirculo = length [() | (x, y) <- points, fromIntegral x^2 + fromIntegral y^2 <= fromIntegral (r^2)]
+    return dentroCirculo
 
 -- Parte (b)
 data Uni = Chile | Cato deriving (Eq)
@@ -168,19 +217,36 @@ type Urn = (Int, Int)
 
 -- 1er componente: #jugadores Chile, 2do componente: #jugadores Cato
 
-pickPlayer :: Urn -> Dist (Uni, Urn)
----
-pickPlayer (chile, cato) = do
-  if chile > 0 && cato > 0
-    then uniform [(Chile, (chile - 1, cato)), (Cato, (chile, cato - 1))]
-    else
-      if chile > 0
-        then return (Chile, (chile - 1, cato))
-        else return (Cato, (chile, cato - 1))
 
--- resultE3b :: Probability
-----
--- resultE3b = do
---    let initialUrn = (8, 2)  -- 8 estudiantes de UChile, 2 estudiantes de UC
---    players <- sequence [pickPlayer initialUrn, pickPlayer initialUrn]
---    let single1 = take 2 players
+-- Función que representa el proceso de sacar una bolilla
+pickPlayer :: Urn -> Dist (Uni, Urn)
+pickPlayer (uch, cato)
+  | uch > 0 && cato > 0 = uniform [(Chile, (uch - 1, cato)), (Cato, (uch, cato - 1))]
+  | uch > 0 = return (Chile, (uch - 1, cato))
+  | otherwise = return (Cato, (uch, cato - 1))
+
+-- Función para armar los singles
+pairs :: Urn -> Dist [(Uni, Uni)]
+pairs urn = go urn []
+  where
+    go :: Urn -> [(Uni, Uni)] -> Dist [(Uni, Uni)]
+    go (0, 0) acc = return (reverse acc)
+    go urn acc = do
+      (p1, urn1) <- pickPlayer urn
+      (p2, urn2) <- pickPlayer urn1
+      go urn2 ((p1, p2) : acc)
+
+-- Función para calcular la probabilidad deseada
+resultE3b :: Probability
+resultE3b = do
+  let totalPairs = 10 
+      initialUrn = (8, 2) 
+  singles <- pairs initialUrn
+  let sameUni = filter (uncurry (==)) singles
+      probability = 1 - (fromIntegral (length sameUni) / fromIntegral totalPairs)
+  return probability
+
+
+
+
+-- 

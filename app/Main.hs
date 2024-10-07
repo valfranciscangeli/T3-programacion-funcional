@@ -1,7 +1,7 @@
+import Control.Monad.State (evalState)
 import T3
 import Test.Hspec (Spec, describe, hspec, it, shouldBe)
 
-import Control.Monad.State
 -- Pruebas para EJERCICIO 1 =============================
 
 -- Parte (a):------
@@ -43,7 +43,7 @@ testsEjecicio2ParteA = describe "EJERCICIO 2.a) Applicative y Monad" $ do
   it "aplicar funcion a Good" $ do
     (Good 5 >>= \x -> pure (x + 2) :: Result String Int) `shouldBe` (Good 7 :: Result String Int)
   it "funcion que provoca Fail" $ do
-    (Good 5 >>= \x -> Fail "error" :: Result String Int) `shouldBe` (Fail "error" :: Result String Int)
+    (Good (5 :: Int) >> (Fail "error" :: Result String Int)) `shouldBe` (Fail "error" :: Result String Int)
 
 -- Parte (b):------
 testsEjecicio2ParteB :: Spec
@@ -51,16 +51,7 @@ testsEjecicio2ParteB = describe "EJERCICIO 2.b) doGroceries" $ do
   it "sin tiendas -> Fail" $ do
     doGroceries [] `shouldBe` Fail "No Shops to visit!"
 
--- it "una tienda -> Good" $ do
---   doGroceries ["tiendita"] `shouldBe` Good ()
--- it "muchas tiendas -> Good" $ do
---   doGroceries ["tiendita", "notiendita"] `shouldBe` Good ()
--- it "tienda falla -> Fail" $ do
---   doGroceries ["tiendita", "notiendita"] `shouldBe` Fail "Product not found"
--- it "cycle falla -> Fail" $ do
---   doGroceries ["tiendita", "notiendita"] `shouldBe` Fail "Could not cycle to next shop"
--- it "todo bien -> Good" $ do
---   doGroceries ["tiendita", "tiendita2", "tiendita3"] `shouldBe` Good ()
+-- no se puede probar mas porque las funciones estan indefinidas
 
 -- Pruebas para EJERCICIO 3 =============================
 
@@ -87,16 +78,12 @@ testsEjecicio3 = describe "EJERCICIO 3) playGame" $ do
 -- Pruebas para EJERCICIO 4 =============================
 
 -- Parte (a):------
--- testsEjecicio4ParteA :: Spec
--- testsEjecicio4ParteA = describe "EJERCICIO 4.a) posibleMoves" $ do
---   it "pruebas para posibleMoves" $ do
---     evalCF (Simple 5) `shouldBe` (5, 1)
+testsEjecicio4ParteA :: Spec
+testsEjecicio4ParteA = undefined
 
 -- Parte (b):------
--- testsEjecicio4ParteB :: Spec
--- testsEjecicio4ParteB = describe "EJERCICIO 4.b) nSteps" $ do
---   it "pruebas para posibleMoves" $ do
---     evalCF (Simple 5) `shouldBe` (5, 1)
+testsEjecicio4ParteB :: Spec
+testsEjecicio4ParteB = undefined
 
 {-------------------------------------------}
 {------------------ MAIN -------------------}
@@ -112,6 +99,6 @@ main = hspec $ do
   testsEjecicio2ParteB
   -- Ejercicio 3
   testsEjecicio3
--- -- Ejercicio 4
--- testsEjecicio4A
--- testsEjecicio4B
+  -- -- Ejercicio 4
+  --testsEjecicio4ParteA
+  --testsEjecicio4ParteB
