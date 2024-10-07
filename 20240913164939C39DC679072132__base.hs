@@ -35,7 +35,7 @@ data Result e g = Fail e | Good g
 
 instance Functor (Result e) where
   -- fmap :: (a->b) -> Result e a -> Result e b
-  fmap f (Fail err) = Fail err
+  fmap _ (Fail err) = Fail err
   fmap f (Good res) = Good (f res)
 
 -- Parte (a)
